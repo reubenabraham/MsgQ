@@ -1,4 +1,5 @@
 .idea/
 python/src/auth/env
+python/src/gateway/env_gateway
 **/__pycache__/
 .DS_Store
