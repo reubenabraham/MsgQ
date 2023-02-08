@@ -5,54 +5,46 @@ from flask_mysqldb import MySQL
 server = Flask(__name__)
 mysql = MySQL(server)
 
-# Set these environment variables - export MYSQL_HOST = sample
+# config
 server.config["MYSQL_HOST"] = os.environ.get("MYSQL_HOST")
 server.config["MYSQL_USER"] = os.environ.get("MYSQL_USER")
 server.config["MYSQL_PASSWORD"] = os.environ.get("MYSQL_PASSWORD")
 server.config["MYSQL_DB"] = os.environ.get("MYSQL_DB")
-server.config["MYSQL_PORT"] = os.environ.get("MYSQL_PORT")
+server.config["MYSQL_PORT"] = int(os.environ.get("MYSQL_PORT"))
 
 
 @server.route("/login", methods=["POST"])
 def login():
     auth = request.authorization
     if not auth:
-        return "Missing credentials", 401
+        return "missing credentials", 401
 
-    # Now we check for valid credentials by interfacing with the database.
+    # check db for username and password
     cur = mysql.connection.cursor()
     res = cur.execute(
-        "SELECT email, password from user WHERE email=%s", (auth.username,)
+        "SELECT email, password FROM user WHERE email=%s", (auth.username,)
     )
 
-    # If the user exists, the result res : an array of rows
-    if res:
+    if res > 0:
         user_row = cur.fetchone()
         email = user_row[0]
         password = user_row[1]
 
-        # Now check if the user and password match the ones passed in from the user request.
         if auth.username != email or auth.password != password:
-            return "Invalid credentials", 401
+            return "invalid credentials", 401
         else:
-            # Return a JWT
             return createJWT(auth.username, os.environ.get("JWT_SECRET"), True)
-
     else:
-        # The user doesn't exist in our database.
-        return "Invalid credentials", 401
+        return "invalide credentials", 401
 
 
-# We need to route to validate JWT tokens
 @server.route("/validate", methods=["POST"])
 def validate():
     encoded_jwt = request.headers["Authorization"]
 
     if not encoded_jwt:
-        return "Invalid Credentials.", 401
+        return "missing credentials", 401
 
-    # The structure of the bearer token looks like : "Authorization: Bearer <token>"
-    # So we want to pick up the element at the first index so (token)
     encoded_jwt = encoded_jwt.split(" ")[1]
 
     try:
@@ -69,7 +61,8 @@ def createJWT(username, secret, authz):
     return jwt.encode(
         {
             "username": username,
-            "exp": datetime.datetime.now(tz=datetime.timezone.utc) + datetime.timedelta(days=1),
+            "exp": datetime.datetime.now(tz=datetime.timezone.utc)
+            + datetime.timedelta(days=1),
             "iat": datetime.datetime.utcnow(),
             "admin": authz,
         },
@@ -77,6 +70,6 @@ def createJWT(username, secret, authz):
         algorithm="HS256",
     )
 
+
 if __name__ == "__main__":
-    # if we dont set host, the default is localhost meaning our API would not be available externally.
     server.run(host="0.0.0.0", port=5000)
