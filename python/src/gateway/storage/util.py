@@ -33,8 +33,8 @@ def upload(f, fs, channel, access):
             )
         )
 
-    except:
-
+    except Exception as err:
+        print(err)
         # If the message isn't put on the queue, the mp3 that we stored in mongo will never be processed
         # Hence, delete the file in mongo- we dont want stale files in mongo.
         fs.delete(fid)

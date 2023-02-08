@@ -3,5 +3,6 @@ python/src/auth/env
 python/src/gateway/env_gateway
 python/src/converter/converter_env
 python/src/converter/sample_vid.mp4
+python/src/converter/test.mp3
 **/__pycache__/
 .DS_Store
