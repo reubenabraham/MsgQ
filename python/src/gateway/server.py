@@ -5,6 +5,8 @@ from auth import validate
 from auth_svc import access
 from storage import util
 from bson.objectid import ObjectId
+import sys
+import logging
 
 server = Flask(__name__)
 server.config["MONGO_URI"] = "mongodb://host.minikube.internal:27017/videos"
@@ -16,8 +18,15 @@ fs = gridfs.GridFS(mongo.db)
 connection = pika.BlockingConnection(pika.ConnectionParameters("rabbitmq"))
 channel = connection.channel()
 
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+server.logger.addHandler(handler)
+server.logger.setLevel(logging.DEBUG)
+
 @server.route("/login", methods=["POST"])
 def login():
+    server.logger.debug("Within main login()")
     token, err = access.login(request)
 
     if not err:
