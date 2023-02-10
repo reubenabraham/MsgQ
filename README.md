@@ -1,4 +1,4 @@
-# MP4 -> MP3 Converter
+# MP4 → MP3 Converter
 
 ## Overview
 
@@ -50,4 +50,34 @@
   - Use the `init.sql` script to set-up mysql: `mysql -u root < init.sql`
 - Create a dockerhub account, and login via CLI: `docker login -u user_name -p password docker.io`
 - Make sure you have `curl` / Postman etc installed to make API calls.
-  
+
+## Service Descriptions
+
+### Auth Service
+
+- `/login` endpoint: Checks for valid login credentials, and if so, returns a JWT.
+- `/validate` endpoint: Ensures the received JWT is valid.
+- Our JWTs are signed with a symmetric signing algorithm - `HS256` which has a single private key which only the auth service knows.
+- The mysql environment variables are stored in `manifests/configmap.yaml` and the database password and jwt secret are stored in `manifests/secret.yaml`
+- We have 2 replicas of this service running.
+
+
+## Build and Deploy a Service
+
+- Navigate to a service directory, for example: `/python/src/auth`
+- `docker build .` to build the image. Store the SHA returned at the end of the build.
+- `docker tag {SHA_value} {dockerhub_username}/auth:{tag}`
+- `docker push {dockerhub_username}/auth:{tag}`
+- `cd` into `manifests` and `kubectl apply -f ./`
+- Go into `k9s` and verify that the service is up and logs are available.
+- If we want to scale-up/down replicas : `kubectl scale deployment --replicas={new_replica_number} {service_name}` 
+
+## General Notes
+
+- We normally have Flask servers listen on specific IP address and port, but since the containers IPs constantly change when services go down/up, we have the server listen on `0.0.0.0` - on all IPs.
+- `host.minikube.internal` in `manifests/configmap.yaml` indicates to kubernetes to interface with `localhost`
+
+## Areas of Improvement
+
+- Use a ORM like `sqlalchemy` instead of string SQL queries.
+- Use github secrets to store passwords/secrets etc rather than check it in plain-text.  
