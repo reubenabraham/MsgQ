@@ -33,3 +33,21 @@
 14. User uses the file-id and jwt to hit the `/download` end-point.
 15. The `gateway` takes the file-id, and pulls the mp3 from MongoDB.
 16. The mp3 is returned to the user and is downloaded locally.
+
+## Project Dependencies
+- Python 3.9+
+- Docker : `brew install docker`
+- Kubernetes CMD tools (kubectl) : `brew install kubectl`
+- Minikube : `brew install minikube`
+- Make sure the docker daemon is up, then `minikube start --driver = docker`
+- K9S : `brew install k9s`
+- MySQL
+  - Make sure you install mysql running the same architecture of your system python, or else, some packages we use to interface with mysql will not operate correctly.
+  - For instance, if you python is built for `x86` (check with `import platform`,`platform.machine()`), then first make sure your `homebrew` is `x86` homebrew and not `arm64` homebrew. 
+  - `which brew` will either return `/opt/homebrew/bin/brew` (Apple Silicon/ARM64) or `/usr/local/bin/brew` (Intel x86).
+  - For Arm64 Macs, you will have to specifically install x86 homebrew, add an alias in `.zshrc` as `brew86` and then `brew86 install mysql`
+  - Start mysql: `brew86 services start mysql` / `brew86 services restart mysql`
+  - Use the `init.sql` script to set-up mysql: `mysql -u root < init.sql`
+- Create a dockerhub account, and login via CLI: `docker login -u user_name -p password docker.io`
+- Make sure you have `curl` / Postman etc installed to make API calls.
+  
