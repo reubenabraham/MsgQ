@@ -13,6 +13,7 @@
 ## Architecture and Control Flow
 
 ![Alt text](architecture.png)
+![Alt text](k9s.png)
 
 ### Control Flow :
 
