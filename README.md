@@ -50,16 +50,21 @@
   - Use the `init.sql` script to set-up mysql: `mysql -u root < init.sql`
 - Create a dockerhub account, and login via CLI: `docker login -u user_name -p password docker.io`
 - Make sure you have `curl` / Postman etc installed to make API calls.
+- Install mongodb and `mongosh` : [Install Instructions](https://www.mongodb.com/docs/manual/tutorial/install-mongodb-on-os-x/)
 
 ## Service Descriptions
 
 ### Auth Service
+Checks for login credentials and returns a JWT if user is authenticated. Also helps validate whether a supplied JWT is legitimate.
 
-- `/login` endpoint: Checks for valid login credentials, and if so, returns a JWT.
-- `/validate` endpoint: Ensures the received JWT is valid.
-- Our JWTs are signed with a symmetric signing algorithm - `HS256` which has a single private key which only the auth service knows.
-- The mysql environment variables are stored in `manifests/configmap.yaml` and the database password and jwt secret are stored in `manifests/secret.yaml`
-- We have 2 replicas of this service running.
+### Notification Service
+RabbitMQ consumer - basically reads the messages off the queue and logs the converted file-ids.
+
+### Converter Service
+RabbitMQ consumer and producer - reads messages off the video queue, picks up the file from MongoDB, converts to MP3, stores it back in MongoDB and publishes a message to the mp3 queue with the converted file-id.
+
+### API Gateway
+Services the `/login` , `/upload` and `/download` endpoints. Acts as the point of entry into the Kubernetes cluster.
 
 
 ## Build and Deploy a Service
@@ -72,12 +77,29 @@
 - Go into `k9s` and verify that the service is up and logs are available.
 - If we want to scale-up/down replicas : `kubectl scale deployment --replicas={new_replica_number} {service_name}` 
 
-## General Notes
+## Running the Project
+- Start-up the docker daemon.
+- Ensure mysql and mongodb are up and running. Run `init.sql` as described above in the dependencies section.
+- Start minikube: `minikube start`
+- Add `127.0.0.1 mp3converter.com` and `127.0.0.1 rabbitmq-manager.com` in your `etc/hosts` file so that requests to those urls resolve to localhost. 
+- Configure minikube to allow the ingress addon : `minikude addons enable ingress` and start a minikube tunnel: `minikube tunnel` - only with this, we can have external requests be routed to our gateway which is inside the cluster.
+- Deploy the `rabbit` container.
+- Go to `rabbitmq-manager.com` and create two queues: `video` and `mp3` and set them both to 'durable'.
+- Deploy services in this order: `auth`, `converter`, `notification`. 
+- Deploy the `gateway` service.
+- Use `kubectl logs -f {service_name}` for logs to debug.
+- Note- any changes to code of any service requires a image-rebuild, re-tag, push to docker repo and re-apply of kubectl. Only then will kubernetes pull the updated image while running the containers.
 
-- We normally have Flask servers listen on specific IP address and port, but since the containers IPs constantly change when services go down/up, we have the server listen on `0.0.0.0` - on all IPs.
-- `host.minikube.internal` in `manifests/configmap.yaml` indicates to kubernetes to interface with `localhost`
+Now that all our services are up, lets convert a video. Download a video and put it in `python/src/converter`.
+
+- Login : `curl -X POST http://mp3converter.com/login -u {email}:{password}` - this is the email-password combo used in `init.sql`. This returns a JWT- store it.
+- Upload video : navigate to `/converter` where the video is and : `curl -X POST -F 'file=@./{video_name}.mp4' -H 'Authorization: Bearer {JWT}' http://mp3converter.com/upload`
+- Go to the `notification` service logs and pick up the file-id.
+- Nav to the directory where you want the mp3 and : `curl --output {require_mp3_name}.mp3 -X GET -H 'Authorization: Bearer {JWT}' "http://mp3converter.com/download?fid={file_id}"`
+
 
 ## Areas of Improvement
 
-- Use a ORM like `sqlalchemy` instead of string SQL queries.
+- Use an ORM like `sqlalchemy` instead of string SQL queries.
 - Use github secrets to store passwords/secrets etc rather than check it in plain-text.  
+- Have a smtp server mail the converted file-id to the user instead of picking it up from logs.
